@@ -1,6 +1,8 @@
 #pragma once
 /*
-	Library that implements radix-2 FFT algorithm
+	Library that implements Decimation-In_Frequency (DIF) radix-2 FFT algorithm
+	Author: Larry Singian
+	Date: 9/23/2023
 */
 #include <complex>
 
@@ -8,14 +10,15 @@ class FFT_lib
 {
 	private:
 		// uint32_t N; // number of points in DFT
-		void calculateIndexPairsPerStage();
+		void calculateButterflyPairsPerStage();
 		void calculateTwiddlePerStage();
 		void resetButterflyIndicesState();
+		uint32_t bitReverse(uint32_t inputNum);
 
 	public:
 		void two_pointDFT(std::complex<double> a, std::complex<double> b, std::complex<double>* A, std::complex<double>* B);
 
-		typedef std::complex<double> twiddle;
+		//typedef std::complex<double> twiddle;
 
 		struct butterflyIndex
 		{
@@ -56,6 +59,8 @@ class FFT_lib
 			{
 				this->N = N;
 			}
+
+			// TODO if realSamples is not a power of 2, then pad samples with zeros
 
 			currentStage = 0;
 			numStages = log2(this->N);
@@ -100,21 +105,20 @@ class FFT_lib
 
 		~FFT_lib()
 		{
-			// TODO free up memory allocated!! probably not needed for embedded software, but just good practice.
+			// TODO free up memory allocated!! not needed for embedded software, but just good practice.
 			delete[] butterFlyIndices;
 			delete[] butterFlyIndicesState;
 
+			// delete each row
+			for (int i = 0; i < numStages; i++) 
+			{
+				delete[] stageButterflyPairs[i];
+			}
+
+			delete[] stageButterflyPairs;
 		}
 
 		void init();
 		void testFunc();
 		void calculateFFT();
-
-
-
-
-
-
-
-
 };
