@@ -15,8 +15,9 @@ class FFT_lib
 		void resetButterflyIndicesState();
 		uint32_t bitReverse(uint32_t inputNum);
 
+
 	public:
-		void two_pointDFT(std::complex<double> a, std::complex<double> b, std::complex<double>* A, std::complex<double>* B);
+		void two_pointDFT(std::complex<double>* samples, uint32_t A_index, uint32_t B_index);
 
 		//typedef std::complex<double> twiddle;
 
@@ -31,8 +32,12 @@ class FFT_lib
 		// TODO - using these two arrays for now, switch to struct later
 		uint32_t* butterFlyIndices;
 		bool* butterFlyIndicesState; // false if index is not paired yet, true if its already been paired
+		std::complex<double>* inputSamples;
 
-		uint32_t** stageButterflyPairs; // contains the Butterfly pairs for each stage. rows are the stage, columns are the indices.
+		uint32_t** stageButterflyPairs; // contains the indices of the Butterfly pairs for each stage. Rows are the stage, Columns are the indices.
+		std::complex<double>** W_table; 
+		
+
 
 		struct butterflyValues
 		{
@@ -70,16 +75,30 @@ class FFT_lib
 			butt.B = realSamples;
 			//butt.indexArray = (butterflyIndex*) malloc(this->N * sizeof(butterflyIndex));
 
+			inputSamples = new std::complex<double>[this->N];
 			butterFlyIndices = new uint32_t[this->N]; // TODO address this allocation later
 			butterFlyIndicesState = new bool[this->N];
 			stageButterflyPairs = new uint32_t*[numStages]; // allocate memory for each row
+			W_table = new std::complex<double>*[numStages]; // allocate memory for each row
 
-			// allocate memory for each column of stageButterFlyPairs
+			// TODO change to std::copy later
+			for (int i = 0; i < this->N; i++)
+			{
+				inputSamples[i] = realSamples[i];
+				// TODO eventually add imaginary samples
+			}
+
+			// allocate memory for each column of stageButterFlyPairs. N columns
 			for (int i = 0; i < numStages; i++)
 			{
 				stageButterflyPairs[i] = new uint32_t[this->N];
 			}
 
+			// allocate memory for each column of W_table. N/2 columns
+			for (int i = 0; i < numStages; i++)
+			{
+				W_table[i] = new std::complex<double>[this->N/2];
+			}
 
 			// C way of allocating memory...TODO delete later
 			//butterFlyIndices = (uint32_t*) malloc(this->N * sizeof(uint32_t)); // TODO address the malloc later
@@ -120,5 +139,5 @@ class FFT_lib
 
 		void init();
 		void testFunc();
-		void calculateFFT();
+		std::complex<double>* calculateFFT();
 };

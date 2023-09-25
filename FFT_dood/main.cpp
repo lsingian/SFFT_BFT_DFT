@@ -21,7 +21,7 @@ int main()
         -3.590338341212959e-04
     };
 
-    FFT_lib testFFT(x_real, N);
+    FFT_lib testFFT(x_real, N); // TODO need to remove x_real as an input since this will cause an object to be created each time we want to do an FFT.
 
     std::complex<double> a = 1.0;
     std::complex<double> b = 2.0;
@@ -30,10 +30,12 @@ int main()
     std::complex<double>* A_ptr = &A;
     std::complex<double>* B_ptr = &B;
 
+    std::complex<double>* fft_results;
+
     testFFT.init();
     testFFT.testFunc();
-    testFFT.calculateFFT();
-    testFFT.two_pointDFT(a, b, A_ptr, B_ptr);
+    fft_results = testFFT.calculateFFT();
+    //testFFT.two_pointDFT(a, b);
 
     std::cout << "Hello World!\n";
 }

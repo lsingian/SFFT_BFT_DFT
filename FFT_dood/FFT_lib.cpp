@@ -21,10 +21,6 @@ void FFT_lib::resetButterflyIndicesState()
 	for (int i = 0; i < N; i++)
 	{
 		butterFlyIndicesState[i] = false;
-
-		//butt.indexArray[i].index = (uint32_t*) malloc(sizeof(uint32_t)); // TODO address the mallocs later
-		//butt.indexArray[i].index = 0;
-		//butt.indexArray[i].paired = false;
 	}
 }
 
@@ -35,7 +31,7 @@ void FFT_lib::calculateButterflyPairsPerStage()
 	{
 		// The butterfly pair is the index located 2^(numStages - stageIdx - 1) away.
 		// Ex. 8-point FFT: N = 8 = 2^4 
-		// For the first stage, 
+		// For the first stage (note Stages use 1-based indexing), 
 		// the pair for 0 is 4, which is 2^(4 - 1) away from 0.
 		// the pair for 1 is 5,  which is 2^(4 - 1) away from 1.
 		uint32_t pairIndexDelta = pow(2, numStages - stageIdx - 1);
@@ -91,23 +87,29 @@ void FFT_lib::calculateTwiddlePerStage()
 	// N = points in FFT
 	// [] is the bit-reverse operation. Length of a bit is log2(N) - 1.
 	// Reference: https://www.dsprelated.com/showcode/232.php#:~:text=The%20N%2Dpoint%20DIT%20FFT,of%20Figure%201(a).
-	const uint32_t t_numStages = 4;
-	const uint32_t t_N = 16;
 	// const uint32_t t_kMax = t_N / 2; //  kmax for decimation in time FFT.
 
-	std::complex<double> W_table[t_numStages][t_N / 2]; // N/2 twiddle factors per stage
-	uint32_t k_test_table[t_numStages][t_N / 2]; // N/2 twiddle factors per stage
+	//std::complex<double> W_table[t_numStages][t_N / 2]; // N/2 twiddle factors per stage
+
+	#define DEBUG
+	#ifdef DEBUG
+		const uint32_t t_N = 8;
+		const uint32_t t_numStages = t_N / 2;
+		uint32_t k_test_table[t_numStages][t_N / 2]; // DEBUG only N/2 twiddle factors per stage
+	#endif
 
 	// row iteration of twiddle factor 2D array
-	for (int stageIdx = 0; stageIdx < t_numStages; stageIdx++)
+	for (int stageIdx = 0; stageIdx < numStages; stageIdx++)
 	{
-		uint32_t t_kMax = (t_N / pow(2,stageIdx + 1)); // kmax is number of unique twiddle factors. It is calculated every stage for decimation in frequency FFT.
+		uint32_t kMax = (N / pow(2,stageIdx + 1)); // kmax is the number of UNIQUE twiddle factors. It is calculated every stage for decimation in frequency FFT.
 		
 		// decimation in frequency k-th Twiddle factor is simply, k * (2^P / 2)
 		uint32_t kFactor = pow(2, stageIdx + 1) / 2;
+		
+		// TODO clean this uip by switching the two for loops (kIndex and i loops)
 
 		// column iteration of twiddle factor 2D array
-		for (int kIndex = 0; kIndex < t_kMax; kIndex++) 
+		for (int kIndex = 0; kIndex < kMax; kIndex++) 
 		{
 			// TODO debug when switching to decimation in time FFT algo, for now, using decimation in frequency
 			//uint32_t tempNum = (kp * pow(2, stageIdx + 1)) / t_N;
@@ -117,15 +119,17 @@ void FFT_lib::calculateTwiddlePerStage()
 
 			uint32_t k = kIndex * kFactor;
 			std::complex<double> W_k = std::polar(1.0, -2 * PI * k / N);
-			//k_test_table[stageIdx][kIndex] = k; // this is correct, but its a duplicated step
+			//std::complex<double> W_k(cos(2 * PI * k / N), -sin( 2 * PI * k / N));
 
 			// populate N/2 columns of 2D array with twiddle factors
-			for (int i = 0; i < t_N / 2; i++)
+			for (int i = 0; i < N / 2; i++)
 			{
-				if (kIndex + (i * t_kMax) < t_N / 2) // ensure that we don't access out of array indices
+				if (kIndex + (i * kMax) < N / 2) // ensure that we don't access out of array indices
 				{
-					//k_test_table[stageIdx][kIndex + (i * t_kMax)] = k; // twiddle factor at kIndex repeats every kMax = N/(2^P) indices
-					W_table[stageIdx][kIndex + (i * t_kMax)] = W_k; // twiddle factor at kIndex repeats every kMax = N/(2^P) indices
+					#ifdef DEBUG
+						k_test_table[stageIdx][kIndex + (i * kMax)] = k; // twiddle factor at kIndex repeats every kMax = N/(2^P) indices
+					#endif
+					W_table[stageIdx][kIndex + (i * kMax)] = W_k; // twiddle factor at kIndex repeats every kMax = N/(2^P) indices
 				}
 				else
 				{
@@ -135,7 +139,7 @@ void FFT_lib::calculateTwiddlePerStage()
 		}
 	}
 
-	int test = 1;
+	//int test1 = 0;
 
 	//std::complex<float> _Wnk_Nc(float n, float k)
 	//{
@@ -181,39 +185,53 @@ uint32_t FFT_lib::bitReverse(uint32_t inputNum)
 }
 
 
-void FFT_lib::calculateFFT() // TODO add samples as input here
+std::complex<double>* FFT_lib::calculateFFT() // TODO add samples as input here
 {
-	// TODO add assert that N-point must be a power of 2.	
 
 	// calculate bit-reversed indices pairs for each stage - add this in the init function
 	// 
 	const uint32_t maxStageIter = numStages;
 	const uint32_t maxEvenIndex = N - 2;
 	const uint32_t maxOddIndex = N - 1;
+	const uint32_t butterfliesPerStage = N / 2;
 
-	//for (uint32_t iStage = numStages; iStage > 0; iStage--)
-	//{
-	//	if (1 == iStage) 
-	//	{
-	//		// final stage combines both even and odd DFTs
-	//	}
-	//	else 
-	//	{
-	//		// compute the even pairs
-	//		while (pow(2, iStage) - 2) 
-	//		{
-	//		
-	//		}
-	//		// odd pairs are just the even pairs + 1
-	//	}
+	for (uint32_t stageIdx = 0; stageIdx < numStages; stageIdx++)
+	{
+		// sizes:
+		// stageButterflyPairs[numStages][N]
+		// W_table[numStages][N/2]
+		// inputSamples[N];
 
+		uint32_t twiddleIdx = 0;
 
-	//}
+		// iterate through the butterfly pairs for the current stage
+		for (int i = 0; i < butterfliesPerStage * 2; i++)
+		{
+			// determine indices of the butterfly pairs
+			uint32_t A_index = stageButterflyPairs[stageIdx][i++];
+			uint32_t B_index = stageButterflyPairs[stageIdx][i];
+
+			two_pointDFT(inputSamples, A_index, B_index);
+
+			// multiply the "B" output of the butterfly by the twiddle factor
+			inputSamples[B_index] = inputSamples[B_index] * W_table[stageIdx][twiddleIdx++];
+		}
+	}
+
+	return inputSamples;
 }
 
-void FFT_lib::two_pointDFT(std::complex<double> a, std::complex<double> b, std::complex<double>* A, std::complex<double>* B)
+void FFT_lib::two_pointDFT(std::complex<double>* samples, uint32_t A_index, uint32_t B_index)
 {
-	const int N = 8;
+	// grab the values of the indices
+	std::complex<double> x_A = samples[A_index];
+	std::complex<double> x_B = samples[B_index];
+
+	// TODO see if we can do this in place
+	samples[A_index] = x_A + x_B;
+	samples[B_index] = x_A - x_B;
+
+
 
 	//std::complex<double> j;
 	//j = -1;
