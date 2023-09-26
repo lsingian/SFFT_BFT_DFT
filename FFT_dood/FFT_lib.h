@@ -8,18 +8,28 @@
 
 class FFT_lib
 {
+	public:
+		enum class FFTAlgorithm_Types
+		{
+			INVALID_ALGO = -1,
+			DECIMATION_IN_TIME,
+			DECIMATION_IN_FREQUENCY,
+			MAX_ALGO
+		};
+
 	private:
-		// uint32_t N; // number of points in DFT
+		FFTAlgorithm_Types algorithm;
 		void calculateButterflyPairsPerStage();
 		void calculateTwiddlePerStage();
 		void resetButterflyIndicesState();
-		uint32_t bitReverse(uint32_t inputNum);
+		void bitReverse(std::complex<double>* inputArray);
 
 
 	public:
-		void two_pointDFT(std::complex<double>* samples, uint32_t A_index, uint32_t B_index);
-
-		//typedef std::complex<double> twiddle;
+		void init();
+		std::complex<double>* calculateFFT();
+		void computeButterfly_DIF(std::complex<double>* samples, uint32_t A_index, uint32_t B_index, std::complex<double> W);
+		void computeButterfly_DIT(std::complex<double>* samples, uint32_t A_index, uint32_t B_index, std::complex<double> W);
 
 		struct butterflyIndex
 		{
@@ -36,8 +46,6 @@ class FFT_lib
 
 		uint32_t** stageButterflyPairs; // contains the indices of the Butterfly pairs for each stage. Rows are the stage, Columns are the indices.
 		std::complex<double>** W_table; 
-		
-
 
 		struct butterflyValues
 		{
@@ -53,7 +61,7 @@ class FFT_lib
 		uint32_t numStages;
 		uint32_t currentStage;
 
-		FFT_lib(double* realSamples, uint32_t N)
+		FFT_lib(double* realSamples, uint32_t N, FFTAlgorithm_Types algorithm)
 		{
 			// limit the FFTs to size MAX_N for now. Future implementation should remove this restriction
 			if (N > MAX_N) 
@@ -63,6 +71,15 @@ class FFT_lib
 			else 
 			{
 				this->N = N;
+			}
+
+			if (FFTAlgorithm_Types::INVALID_ALGO < algorithm && algorithm < FFTAlgorithm_Types::MAX_ALGO) 
+			{
+				this->algorithm = algorithm;
+			}
+			else 
+			{
+				this->algorithm = FFTAlgorithm_Types::DECIMATION_IN_TIME;
 			}
 
 			// TODO if realSamples is not a power of 2, then pad samples with zeros
@@ -85,7 +102,7 @@ class FFT_lib
 			for (int i = 0; i < this->N; i++)
 			{
 				inputSamples[i] = realSamples[i];
-				// TODO eventually add imaginary samples
+				// TODO eventually add imaginary samples, real samples are sufficient for now (for audio applications)
 			}
 
 			// allocate memory for each column of stageButterFlyPairs. N columns
@@ -100,31 +117,16 @@ class FFT_lib
 				W_table[i] = new std::complex<double>[this->N/2];
 			}
 
-			// C way of allocating memory...TODO delete later
-			//butterFlyIndices = (uint32_t*) malloc(this->N * sizeof(uint32_t)); // TODO address the malloc later
-			//butterFlyIndicesState = (bool*) malloc(this->N * sizeof(bool));
-			//stageButterflyPairs = (uint32_t**) malloc(numStages * sizeof(uint32_t) * this->N * sizeof(uint32_t));
-
-			// indexArray = (butterflyIndex*)malloc(this->N * sizeof(butterflyIndex));
-
 			for (int i = 0; i < this->N; i++) 
 			{
 				butterFlyIndices[i] = i;
 				butterFlyIndicesState[i] = false;
-
-				//butt.indexArray[i].index = (uint32_t*) malloc(sizeof(uint32_t)); // TODO address the mallocs later
-				//butt.indexArray[i].index = 0;
-				//butt.indexArray[i].paired = false;
 			}
-
-
-			//butt.A = (double*) malloc(N); // TODO address malloc later
-			//butt.B = (double*) malloc(N);
 		}
 
 		~FFT_lib()
 		{
-			// TODO free up memory allocated!! not needed for embedded software, but just good practice.
+			//  Free up memory allocated!! not needed for embedded software, but just good practice.
 			delete[] butterFlyIndices;
 			delete[] butterFlyIndicesState;
 
@@ -132,12 +134,10 @@ class FFT_lib
 			for (int i = 0; i < numStages; i++) 
 			{
 				delete[] stageButterflyPairs[i];
+				delete[] W_table[i];
 			}
 
 			delete[] stageButterflyPairs;
+			delete[] W_table;
 		}
-
-		void init();
-		void testFunc();
-		std::complex<double>* calculateFFT();
 };

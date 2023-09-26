@@ -21,32 +21,14 @@ int main()
         -3.590338341212959e-04
     };
 
-    FFT_lib testFFT(x_real, N); // TODO need to remove x_real as an input since this will cause an object to be created each time we want to do an FFT.
+    FFT_lib::FFTAlgorithm_Types algorithm = FFT_lib::FFTAlgorithm_Types::DECIMATION_IN_FREQUENCY;
 
-    std::complex<double> a = 1.0;
-    std::complex<double> b = 2.0;
-    std::complex<double> A;
-    std::complex<double> B;
-    std::complex<double>* A_ptr = &A;
-    std::complex<double>* B_ptr = &B;
+    FFT_lib testFFT(x_real, N, algorithm); // TODO need to remove x_real as an input since this will cause an object to be created each time we want to do an FFT.
 
     std::complex<double>* fft_results;
 
     testFFT.init();
-    testFFT.testFunc();
     fft_results = testFFT.calculateFFT();
-    //testFFT.two_pointDFT(a, b);
 
-    std::cout << "Hello World!\n";
+    int endbreakpoint = 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file

@@ -1,5 +1,6 @@
 #include "FFT_lib.h"
 #include <iostream>
+#include <algorithm>
 #include <cmath>
 #include "math.h"
 
@@ -10,10 +11,6 @@ void FFT_lib::init()
 {
 	calculateButterflyPairsPerStage();
 	calculateTwiddlePerStage();
-}
-void FFT_lib::testFunc() 
-{
-	std::cout << "This is a test func dood! " << std::endl;
 }
 
 void FFT_lib::resetButterflyIndicesState() 
@@ -26,7 +23,7 @@ void FFT_lib::resetButterflyIndicesState()
 
 void FFT_lib::calculateButterflyPairsPerStage()
 {
-	// row iteration of the 2D array 
+	// row iteration of the 2D array that contains the butterfly index pairs for each stage
 	for (int stageIdx = 0; stageIdx < numStages; stageIdx++) 
 	{
 		// The butterfly pair is the index located 2^(numStages - stageIdx - 1) away.
@@ -40,40 +37,23 @@ void FFT_lib::calculateButterflyPairsPerStage()
 		resetButterflyIndicesState();
 
 		// column iteration of the 2D array
-		for (int i = 0; i < N; i++) 
-		{   
-			// index has already been paired, no need to pair
-			if (butterFlyIndicesState[i]) 
+		for (int i = 0; i < N; i++)
+		{
+			// index does not have a butterfly pair, so find its pair
+			if (!butterFlyIndicesState[i])
 			{
-				continue;
+				// Find the index of the butterfly pair
+				uint32_t pairIndex = i + butterFlyIndices[pairIndexDelta];
+
+				// Store the butterfly pair in the 2D array of stage rows and pairs columns.
+				stageButterflyPairs[stageIdx][pairIdx++] = butterFlyIndices[i];
+				butterFlyIndicesState[i] = true;
+
+				stageButterflyPairs[stageIdx][pairIdx++] = pairIndex;
+				butterFlyIndicesState[i + pairIndexDelta] = true;
 			}
-
-			// Find the index of the butterfly pair
-			uint32_t pairIndex = i + butterFlyIndices[pairIndexDelta];
-
-			// Store the butterfly pair in the 2D array of stage rows and pairs columns.
-			stageButterflyPairs[stageIdx][pairIdx++] = butterFlyIndices[i];
-			butterFlyIndicesState[i] = true;
-
-			stageButterflyPairs[stageIdx][pairIdx++] = pairIndex;
-			butterFlyIndicesState[i + pairIndexDelta] = true; 
 		}
 	}
-
-	int test = 0;
-
-	//// Construct final stage pairs - combination of odd and even sequence DFTs
-	//for (uint32_t n = 0; n < N / 2; n++)
-	//{
-	//	butt.A[n] = 2 * n;
-	//	butt.B[n] = butt.A[n] + 1;
-	//}
-
-	//// Construct preceding stage pairs, starting from the final stage pairs.
-	//for (uint32_t iStage = 1; iStage < numStages + 1; iStage++)
-	//{
-
-	//}
 };
 
 void FFT_lib::calculateTwiddlePerStage() 
@@ -138,110 +118,91 @@ void FFT_lib::calculateTwiddlePerStage()
 			}
 		}
 	}
-
-	//int test1 = 0;
-
-	//std::complex<float> _Wnk_Nc(float n, float k)
-	//{
-	//	std::complex<float> _Wnk_Ncomp;
-	//	_Wnk_Ncomp.real(cosf(-2.0f * _Pi * (float)n * k / sampleRate));
-	//	_Wnk_Ncomp.imag(sinf(-2.0f * _Pi * (float)n * k / sampleRate));
-	//	return _Wnk_Ncomp;
-	//}
-
-	//std::complex<float> _Wk_Nc(float k)
-	//{
-	//	std::complex<float> _Wk_Ncomp;
-	//	_Wk_Ncomp.real(cosf(-2.0f * _Pi * k / sampleRate));
-	//	_Wk_Ncomp.imag(sinf(-2.0f * _Pi * k / sampleRate));
-	//	return _Wk_Ncomp;
-	//}
+	int test = 0;
 }
 
-uint32_t FFT_lib::bitReverse(uint32_t inputNum) 
+void FFT_lib::bitReverse(std::complex<double>* inputArray) 
 {
-	unsigned int reversedNum = 0;
-	unsigned int numOfBits = sizeof(inputNum) * 8; // Number of bits in 'inputNum'
+	int numBits = static_cast<int>(log2(N)); 
 
-	for (int i = 0; i < numOfBits; i++) {
-		reversedNum = (reversedNum << 1) | (inputNum & 1);
-		inputNum >>= 1;
+	for (int i = 0; i < N; i++) 
+	{
+		int j = 0;
+
+		// TODO understand this algorithm in the future. no time now
+		for (int bit = 0; bit < numBits; bit++) 
+		{
+			j |= ((i >> bit) & 1) << (numBits - 1 - bit);
+		}
+
+		if (i < j) 
+		{
+			std::swap(inputArray[i], inputArray[j]);
+		}
 	}
-	return reversedNum;
-
-	// Code taken from: https://stackoverflow.com/questions/932079/in-place-bit-reversed-shuffle-on-an-array
-
-	//// Code taken from: https://saturncloud.io/blog/efficient-algorithm-for-bit-reversal-in-c-a-data-scientists-perspective/
-	//// Will do my own implementation later
-	//unsigned int numOfBits = sizeof(inputNum) * 8; // Number of bits in 'inputNum'
-	//unsigned int reversedNum = 0;
-
-	//for (int i = 0; i < numOfBits; i++) {
-	//	if ((inputNum & (1 << i))) {
-	//		reversedNum |= 1 << ((numOfBits - 1) - i);
-	//	}
-	//}
-	//return reversedNum;
 }
 
-
+/*
+	sizes:
+	stageButterflyPairs[numStages][N]
+	W_table[numStages][N/2]
+	inputSamples[N];
+*/
 std::complex<double>* FFT_lib::calculateFFT() // TODO add samples as input here
 {
-
-	// calculate bit-reversed indices pairs for each stage - add this in the init function
-	// 
-	const uint32_t maxStageIter = numStages;
 	const uint32_t maxEvenIndex = N - 2;
 	const uint32_t maxOddIndex = N - 1;
 	const uint32_t butterfliesPerStage = N / 2;
 
+	// Re-ordering of samples occurs at the start of the FFT for DIT.
+	if (FFTAlgorithm_Types::DECIMATION_IN_TIME == algorithm)
+	{
+		bitReverse(inputSamples);
+	}
+
 	for (uint32_t stageIdx = 0; stageIdx < numStages; stageIdx++)
 	{
-		// sizes:
-		// stageButterflyPairs[numStages][N]
-		// W_table[numStages][N/2]
-		// inputSamples[N];
-
 		uint32_t twiddleIdx = 0;
 
 		// iterate through the butterfly pairs for the current stage
 		for (int i = 0; i < butterfliesPerStage * 2; i++)
 		{
 			// determine indices of the butterfly pairs
-			uint32_t A_index = stageButterflyPairs[stageIdx][i++];
-			uint32_t B_index = stageButterflyPairs[stageIdx][i];
+			uint32_t A_index = stageButterflyPairs[stageIdx][i++]; // A's are the even indices
+			uint32_t B_index = stageButterflyPairs[stageIdx][i]; // B's are the odd indices
 
-			two_pointDFT(inputSamples, A_index, B_index);
+			// Decimation in Time Butterfly - TODO future implementation
+			//computeButterfly_DIT(inputSamples, A_index, B_index, W_table[numStages - 1 - stageIdx][twiddleIdx++]);
 
-			// multiply the "B" output of the butterfly by the twiddle factor
-			inputSamples[B_index] = inputSamples[B_index] * W_table[stageIdx][twiddleIdx++];
+			// Decimation in Frequency
+			computeButterfly_DIF(inputSamples, A_index, B_index, W_table[stageIdx][twiddleIdx++]);
 		}
+	}
+
+	// Re-ordering of samples occurs at the end of the FFT for DIF.
+	if (FFTAlgorithm_Types::DECIMATION_IN_FREQUENCY == algorithm) 
+	{
+		bitReverse(inputSamples);
 	}
 
 	return inputSamples;
 }
 
-void FFT_lib::two_pointDFT(std::complex<double>* samples, uint32_t A_index, uint32_t B_index)
+void FFT_lib::computeButterfly_DIF(std::complex<double>* samples, uint32_t A_index, uint32_t B_index, std::complex<double> W)
 {
-	// grab the values of the indices
 	std::complex<double> x_A = samples[A_index];
 	std::complex<double> x_B = samples[B_index];
 
-	// TODO see if we can do this in place
+	samples[A_index] = x_A + x_B;
+	samples[B_index] = (x_A - x_B) * W;
+}
+
+void FFT_lib::computeButterfly_DIT(std::complex<double>* samples, uint32_t A_index, uint32_t B_index, std::complex<double> W) 
+{
+	std::complex<double> x_A = samples[A_index];
+	std::complex<double> x_B = samples[B_index] * W;
+
 	samples[A_index] = x_A + x_B;
 	samples[B_index] = x_A - x_B;
-
-
-
-	//std::complex<double> j;
-	//j = -1;
-	//j =  sqrt(j);
-	
-	//std::complex<double> W_dood;
-	//W_dood = exp(j * (2 * PI / N));
-
-	////std::complex<double> L_dood = std::polar(1.0, -2 * PI / N); // need to add k in the exponent later
-
-	//*A = a + (W_dood * b);
-	//*B = a - (W_dood * b);
 }
+
