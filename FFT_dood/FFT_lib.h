@@ -22,12 +22,12 @@ class FFT_lib
 		void calculateButterflyPairsPerStage();
 		void calculateTwiddlePerStage();
 		void resetButterflyIndicesState();
-		void bitReverse(std::complex<double>* inputArray);
+		template <typename T> void bitReverse(T* inputArray);
 
 
 	public:
 		void init();
-		std::complex<double>* calculateFFT();
+		std::complex<double>* calculateFFT(double* realSamples);
 		void computeButterfly_DIF(std::complex<double>* samples, uint32_t A_index, uint32_t B_index, std::complex<double> W);
 		void computeButterfly_DIT(std::complex<double>* samples, uint32_t A_index, uint32_t B_index, std::complex<double> W);
 
@@ -61,7 +61,7 @@ class FFT_lib
 		uint32_t numStages;
 		uint32_t currentStage;
 
-		FFT_lib(double* realSamples, uint32_t N, FFTAlgorithm_Types algorithm)
+		FFT_lib(uint32_t N, FFTAlgorithm_Types algorithm)
 		{
 			// limit the FFTs to size MAX_N for now. Future implementation should remove this restriction
 			if (N > MAX_N) 
@@ -79,7 +79,7 @@ class FFT_lib
 			}
 			else 
 			{
-				this->algorithm = FFTAlgorithm_Types::DECIMATION_IN_TIME;
+				this->algorithm = FFTAlgorithm_Types::DECIMATION_IN_FREQUENCY;
 			}
 
 			// TODO if realSamples is not a power of 2, then pad samples with zeros
@@ -87,9 +87,9 @@ class FFT_lib
 			currentStage = 0;
 			numStages = log2(this->N);
 
-			butt.numButterflyElements = this->N;
-			butt.A = realSamples;
-			butt.B = realSamples;
+			//butt.numButterflyElements = this->N;
+			//butt.A = realSamples;
+			//butt.B = realSamples;
 			//butt.indexArray = (butterflyIndex*) malloc(this->N * sizeof(butterflyIndex));
 
 			inputSamples = new std::complex<double>[this->N];
@@ -97,13 +97,6 @@ class FFT_lib
 			butterFlyIndicesState = new bool[this->N];
 			stageButterflyPairs = new uint32_t*[numStages]; // allocate memory for each row
 			W_table = new std::complex<double>*[numStages]; // allocate memory for each row
-
-			// TODO change to std::copy later
-			for (int i = 0; i < this->N; i++)
-			{
-				inputSamples[i] = realSamples[i];
-				// TODO eventually add imaginary samples, real samples are sufficient for now (for audio applications)
-			}
 
 			// allocate memory for each column of stageButterFlyPairs. N columns
 			for (int i = 0; i < numStages; i++)

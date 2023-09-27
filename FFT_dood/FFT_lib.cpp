@@ -1,11 +1,10 @@
 #include "FFT_lib.h"
 #include <iostream>
 #include <algorithm>
-#include <cmath>
+//#include <cmath>
 #include "math.h"
 
 #define PI 3.14159265358979323846
-
 
 void FFT_lib::init() 
 {
@@ -54,6 +53,8 @@ void FFT_lib::calculateButterflyPairsPerStage()
 			}
 		}
 	}
+
+	int test = 0;
 };
 
 void FFT_lib::calculateTwiddlePerStage() 
@@ -121,7 +122,7 @@ void FFT_lib::calculateTwiddlePerStage()
 	int test = 0;
 }
 
-void FFT_lib::bitReverse(std::complex<double>* inputArray) 
+template<typename T> void FFT_lib::bitReverse(T* inputArray) 
 {
 	int numBits = static_cast<int>(log2(N)); 
 
@@ -148,7 +149,7 @@ void FFT_lib::bitReverse(std::complex<double>* inputArray)
 	W_table[numStages][N/2]
 	inputSamples[N];
 */
-std::complex<double>* FFT_lib::calculateFFT() // TODO add samples as input here
+std::complex<double>* FFT_lib::calculateFFT(double* realSamples) // TODO add samples as input here
 {
 	const uint32_t maxEvenIndex = N - 2;
 	const uint32_t maxOddIndex = N - 1;
@@ -157,7 +158,15 @@ std::complex<double>* FFT_lib::calculateFFT() // TODO add samples as input here
 	// Re-ordering of samples occurs at the start of the FFT for DIT.
 	if (FFTAlgorithm_Types::DECIMATION_IN_TIME == algorithm)
 	{
-		bitReverse(inputSamples);
+		bitReverse(realSamples);
+	}
+
+	// TODO change to std::copy later
+	// Store real and imaginary samples to std::complex array
+	for (int i = 0; i < this->N; i++)
+	{
+		inputSamples[i] = realSamples[i];
+		// TODO eventually add imaginary samples, real samples are sufficient for now (for audio applications)
 	}
 
 	for (uint32_t stageIdx = 0; stageIdx < numStages; stageIdx++)
