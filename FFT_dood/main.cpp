@@ -23,12 +23,15 @@ int main()
 
     FFT_lib::FFTAlgorithm_Types algorithm = FFT_lib::FFTAlgorithm_Types::DECIMATION_IN_FREQUENCY;
 
-    FFT_lib testFFT(x_real, N, algorithm); // TODO need to remove x_real as an input since this will cause an object to be created each time we want to do an FFT.
+    FFT_lib testFFT(N, algorithm); // TODO need to remove x_real as an input since this will cause an object to be created each time we want to do an FFT.
 
     std::complex<double>* fft_results;
+    double* magnitude;
 
     testFFT.init();
-    fft_results = testFFT.calculateFFT();
+    fft_results = testFFT.calculateFFT(x_real);
+
+    magnitude = testFFT.calculateMagnitude(fft_results);
 
     int endbreakpoint = 0;
 }
